@@ -38,7 +38,7 @@ cmap = ListedColormap(colors)
 boundaries = [c - 0.5 for c in codes] + [codes[-1] + 0.5]
 norm = BoundaryNorm(boundaries, ncolors=cmap.N, clip=True)
 
-arr = clipped_img_cdad_costa[0]
+arr = clipped_img_mvd[0]
 plt.figure(figsize=(8, 8))
 plt.imshow(arr, cmap=cmap, norm=norm)
 plt.axis('off')
@@ -69,7 +69,7 @@ else:
 	x = np.arange(len(present_vals))
 	plt.bar(x, present_counts, color=present_colors)
 	plt.xticks(x, present_labels, rotation=45, ha='right')
-	plt.ylabel('Frecuencia')
-	plt.title('Histograma por clase (coloreado según .clr)')
+	plt.ylabel('Frequency')
+	plt.title('Histogram by class')
 	plt.tight_layout()
 	plt.show()
