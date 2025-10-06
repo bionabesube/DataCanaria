@@ -7,7 +7,6 @@ Original file is located at
     https://colab.research.google.com/drive/1YcZelZGI3Cae3X751Nl0LeSXhyfvOzsH
 """
 
-
 import rasterio
 from rasterio.plot import show
 from rasterio.mask import mask
@@ -25,7 +24,7 @@ roi = box(*bbox)
 # 2. Descargar un dataset de WorldPop (ejemplo: población 2000 a 2020 cada 5 años, Uruguay, 100m)
 
 url = ["https://data.worldpop.org/GIS/Population/Global_2000_2020/2000/URY/ury_ppp_2000.tif", "https://data.worldpop.org/GIS/Population/Global_2000_2020/2005/URY/ury_ppp_2005.tif", "https://data.worldpop.org/GIS/Population/Global_2000_2020/2010/URY/ury_ppp_2010.tif", "https://data.worldpop.org/GIS/Population/Global_2000_2020/2015/URY/ury_ppp_2015.tif", "https://data.worldpop.org/GIS/Population/Global_2000_2020/2020/URY/ury_ppp_2020.tif"]
-tif_path = ["worldpop_ury_2000.tif", "worldpop_ury_2005.tif", "worldpop_ury_2010.tif", "worldpop_ury_2015.tif", "worldpop_ury_2020.tif"]
+tif_path = ["data/raw/worldpop_ury_2000.tif", "data/raw/worldpop_ury_2005.tif", "data/raw/worldpop_ury_2010.tif", "data/raw/worldpop_ury_2015.tif", "data/raw/worldpop_ury_2020.tif"]
 r = []
 
 i = 0
@@ -59,8 +58,8 @@ for i in range(len(tif_path)):
         # 4. Mostrar densidad poblacional
         fig, ax = plt.subplots(figsize=(8,6))
         img = show(out_image, transform=out_transform, cmap="viridis", ax=ax)
-        plt.title(f"Densidad de población - Ciudad de la Costa ({tif_path[i].split('_')[-1].split('.')[0]})")
-        plt.colorbar(img.get_images()[0], label="Habitantes por píxel", ax=ax)
+        plt.title(f"Population density - Ciudad de la Costa ({tif_path[i].split('_')[-1].split('.')[0]})")
+        plt.colorbar(img.get_images()[0], label="Residents per pixel", ax=ax)
         plt.show()
   except Exception as e:
     print(f"Error processing file {tif_path[i]}: {e}")
@@ -116,11 +115,11 @@ Create a dictionary mapping years to filenames and load the two selected TIFF fi
 
 # 1. Create a dictionary mapping years to their respective filenames
 tif_files = {
-    2000: "worldpop_ury_2000.tif",
-    2005: "worldpop_ury_2005.tif",
-    2010: "worldpop_ury_2010.tif",
-    2015: "worldpop_ury_2015.tif",
-    2020: "worldpop_ury_2020.tif"
+    2000: "data/raw/worldpop_ury_2000.tif",
+    2005: "data/raw/worldpop_ury_2005.tif",
+    2010: "data/raw/worldpop_ury_2010.tif",
+    2015: "data/raw/worldpop_ury_2015.tif",
+    2020: "data/raw/worldpop_ury_2020.tif"
 }
 
 # 2. Use the selected year1 and year2 to get the corresponding filenames
@@ -211,7 +210,7 @@ img = show(population_difference, transform=out_transform1, cmap="coolwarm", ax=
 plt.title(f"Population Change in Ciudad de la Costa ({earlier_year} - {later_year})")
 
 # Add a colorbar
-plt.colorbar(img.get_images()[0], label="Population Change")
+plt.colorbar(img.get_images()[0], label="Population Change per pixel")
 
 # Display the plot
 plt.show()
@@ -325,3 +324,190 @@ else:
     print("File loading failed, skipping masking and calculation.")
 
 # Visualization step would follow here, and should also check if population_difference is not None
+
+import rasterio
+from rasterio.plot import show
+import matplotlib.pyplot as plt
+
+# Define the path to the TIFF file
+tif_file_path = 'GHS_BUILT_C_MSZ_E2018_GLOBE_R2023A_54009_10_V1_0_R14_C14.tif'
+
+# Open the TIFF file
+try:
+    with rasterio.open(tif_file_path) as src:
+        # Read the raster data (assuming it's a single band)
+        raster_data = src.read(1)
+
+        # Display the raster data
+        fig, ax = plt.subplots(figsize=(10, 10))
+        img = show(raster_data, transform=src.transform, ax=ax, cmap='gray') # Using grayscale for built-up area data
+
+        # Add a title and colorbar
+        plt.title("Built-up Area Density (GHS-BUILT-C)")
+        plt.colorbar(img.get_images()[0], label="Density Value")
+
+        # Show the plot
+        plt.show()
+
+except rasterio.errors.RasterioIOError as e:
+    print(f"Error opening or reading the raster file: {e}")
+except Exception as e:
+    print(f"An unexpected error occurred: {e}")
+
+import rasterio
+from rasterio.mask import mask
+from shapely.geometry import mapping
+import numpy as np
+
+# Define the tif_files dictionary again
+tif_files = {
+    2000: "data/raw/worldpop_ury_2000.tif",
+    2005: "data/raw/worldpop_ury_2005.tif",
+    2010: "data/raw/worldpop_ury_2010.tif",
+    2015: "data/raw/worldpop_ury_2015.tif",
+    2020: "data/raw/worldpop_ury_2020.tif"
+}
+
+# 1. Initialize an empty list called population_data to store the total population for each year.
+population_data = []
+# 2. Initialize an empty list called years to store the corresponding years.
+years = []
+
+# 3. Iterate through the tif_files dictionary which maps years to filenames.
+for year, filename in tif_files.items():
+    try:
+        # 4. For each year and filename in the dictionary, open the TIFF file using rasterio.open().
+        with rasterio.open(filename) as src:
+            print(f"Processing {filename} for year {year}...")
+            # 5. Mask the opened raster using the roi (region of interest) and mask() function. Ensure crop=True.
+            out_image, out_transform = mask(src, [mapping(roi)], crop=True)
+
+            # 6. Handle nodata values in the masked image. If src.nodata is not None, convert the masked image to float and replace nodata values with 0.
+            nodata = src.nodata
+            if nodata is not None:
+                out_image = out_image.astype(float)
+                out_image[out_image == nodata] = 0  # Replace with 0
+
+            # 7. Calculate the sum of all pixel values in the masked image. This represents the total population for the masked area in that year.
+            total_population = np.sum(out_image)
+
+            # 8. Append the calculated total population to the population_data list.
+            population_data.append(total_population)
+            # 9. Append the current year to the years list.
+            years.append(year)
+            print(f"Finished processing {filename}. Total population: {total_population}")
+
+    except rasterio.errors.RasterioIOError as e:
+        print(f"Error opening or processing file {filename}: {e}")
+        continue # Skip to the next file in case of an error
+    except Exception as e:
+        print(f"An unexpected error occurred while processing {filename}: {e}")
+        continue # Skip to the next file in case of an error
+
+# 10. Close the raster file using src.close(). (Handled by 'with' statement)
+
+from shapely.geometry import box
+
+# Define bounding box aproximada de Ciudad de la Costa
+# Coordenadas: oeste, sur, este, norte
+bbox = [-56.05, -34.9, -55.9, -34.75]
+roi = box(*bbox)
+
+# Define the tif_files dictionary again
+tif_files = {
+    2000: "data/raw/worldpop_ury_2000.tif",
+    2005: "data/raw/worldpop_ury_2005.tif",
+    2010: "data/raw/worldpop_ury_2010.tif",
+    2015: "data/raw/worldpop_ury_2015.tif",
+    2020: "data/raw/worldpop_ury_2020.tif"
+}
+
+# 1. Initialize an empty list called population_data to store the total population for each year.
+population_data = []
+# 2. Initialize an empty list called years to store the corresponding years.
+years = []
+
+# 3. Iterate through the tif_files dictionary which maps years to filenames.
+for year, filename in tif_files.items():
+    try:
+        # 4. For each year and filename in the dictionary, open the TIFF file using rasterio.open().
+        with rasterio.open(filename) as src:
+            print(f"Processing {filename} for year {year}...")
+            # 5. Mask the opened raster using the roi (region of interest) and mask() function. Ensure crop=True.
+            out_image, out_transform = mask(src, [mapping(roi)], crop=True)
+
+            # 6. Handle nodata values in the masked image. If src.nodata is not None, convert the masked image to float and replace nodata values with 0.
+            nodata = src.nodata
+            if nodata is not None:
+                out_image = out_image.astype(float)
+                out_image[out_image == nodata] = 0  # Replace with 0
+
+            # 7. Calculate the sum of all pixel values in the masked image. This represents the total population for the masked area in that year.
+            total_population = np.sum(out_image)
+
+            # 8. Append the calculated total population to the population_data list.
+            population_data.append(total_population)
+            # 9. Append the current year to the years list.
+            years.append(year)
+            print(f"Finished processing {filename}. Total population: {total_population}")
+
+    except rasterio.errors.RasterioIOError as e:
+        print(f"Error opening or processing file {filename}: {e}")
+        continue # Skip to the next file in case of an error
+    except Exception as e:
+        print(f"An unexpected error occurred while processing {filename}: {e}")
+        continue # Skip to the next file in case of an error
+
+# 10. Close the raster file using src.close(). (Handled by 'with' statement)
+
+from sklearn.linear_model import LinearRegression
+import numpy as np
+
+# Reshape the years data to be a 2D array
+years_reshaped = np.array(years).reshape(-1, 1)
+
+# Instantiate a LinearRegression model
+model = LinearRegression()
+
+# Fit the linear regression model to the historical data
+model.fit(years_reshaped, population_data)
+
+# 1. Create a NumPy array named future_years containing the years for which you want to make predictions: 2025, 2030, 2035, 2040, 2045, and 2050.
+future_years = np.array([2025, 2030, 2035, 2040, 2045, 2050])
+
+# 2. Reshape the future_years array to be a 2D array using .reshape(-1, 1)
+future_years_reshaped = future_years.reshape(-1, 1)
+
+# 3. Use the trained model (the LinearRegression object) to predict the population for the future_years_reshaped.
+predicted_population = model.predict(future_years_reshaped)
+
+# 4. Print or display the future_years and their corresponding predicted_population values to verify the output.
+for year, population in zip(future_years, predicted_population):
+    print(f"Predicted population for {year}: {population:.2f}")
+
+import matplotlib.pyplot as plt
+
+# Create a figure and axes for the plot
+fig, ax = plt.subplots(figsize=(10, 6))
+
+# Plot the historical population data
+ax.plot(years, population_data, marker='o', linestyle='-', label='Historical Population')
+
+# Plot the predicted population data
+ax.plot(future_years, predicted_population, marker='x', linestyle='--', color='red', label='Projected Population')
+
+# Add a title to the plot
+ax.set_title('Population Growth and Projection for Ciudad de la Costa')
+
+# Add labels to the x-axis and y-axis
+ax.set_xlabel('Year')
+ax.set_ylabel('Population')
+
+# Add a legend to the plot
+ax.legend()
+
+# Add a grid to the plot
+ax.grid(True)
+
+# Display the plot
+plt.show()

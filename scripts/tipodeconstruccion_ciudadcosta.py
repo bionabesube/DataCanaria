@@ -38,7 +38,7 @@ cmap = ListedColormap(colors)
 boundaries = [c - 0.5 for c in codes] + [codes[-1] + 0.5]
 norm = BoundaryNorm(boundaries, ncolors=cmap.N, clip=True)
 
-arr = clipped_img_mvd[0]
+arr = clipped_img_cdad_costa[0]
 plt.figure(figsize=(8, 8))
 plt.imshow(arr, cmap=cmap, norm=norm)
 plt.axis('off')
